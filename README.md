@@ -3,12 +3,12 @@ Gelo  - robotics toolkit
 
 TODO
 
-Electronics
-	Sensors
+# Electronics
+	 Sensors
 		Select ranging sensors
 		Select compass/gyro
 		Test OV2640
-	Mechanics
+	 Mechanics
 		Design overall look
 			Locomotion principle
 			Size/weight goal
@@ -16,22 +16,22 @@ Electronics
 			Manufacture/3D-print
 		Select travel motors/servo
 		Select camera gimbal motors/servo
-Software
-	Embedded
+# Software
+	 Embedded
 		Camera
 			UDP -> OpenCV 
 		Sensor capture
 			I2C/SPI
 		Relative movement calculation
 			UDP -> Unity
-	Unity
+	 Unity
 		Navigation controller
 		SLAM
 		Collision control
 		Networking
 			<--> Embedded
 			<--- OpenCV
-	OpenCV
+	 OpenCV
 		QR-code detection
 		Position verification
 			
