@@ -9,6 +9,7 @@ public class PGrid : MonoBehaviour {
 	public int xSize, ySize; //Gridsize
 
 	public int startX, startY; //Starting point for raising vertices
+	public float height = 4.0f;
 
 	private Mesh mesh;
 	private Vector3[] vertices;
@@ -19,11 +20,7 @@ public class PGrid : MonoBehaviour {
 	}
 
 	void Update(){			//Contains a short test of realtime update of vertices
-		mesh = GetComponent<MeshFilter> ().mesh;
-		Vector3[] verts = mesh.vertices;
-		verts[startX] += Vector3.up * 2.0f;
-		mesh.vertices = verts;		//Reassign
-		mesh.RecalculateBounds();
+		MoveVertex(Vector3.up * height, startX, 0); 
 		startX = (startX +1)%(((xSize+1)*(ySize+1))); //+1%Clamp
 	}
 	private void Generate(){ 		//Generates the grid
@@ -50,5 +47,14 @@ public class PGrid : MonoBehaviour {
 			mesh.triangles = tris;
 
 		}
+	}
+	private void MoveVertex(Vector3 move, int xIndex, int yIndex){ //Edit a vertex in the grid based on x-y index
+		mesh = GetComponent<MeshFilter> ().mesh;
+		Vector3[] verts = mesh.vertices;
+		int index = xIndex + (yIndex * xSize);
+		verts[index] += move;
+		mesh.vertices = verts;		//Reassign
+		mesh.RecalculateBounds();
+		mesh.RecalculateNormals();
 	}
 }
