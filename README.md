@@ -36,5 +36,6 @@ TODO
 * OpenCV
 	* QR-code detection
 	* Position verification
-			
+* ZBar
+	* QR-code decoding	
 			
