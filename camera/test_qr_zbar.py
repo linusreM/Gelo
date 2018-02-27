@@ -8,8 +8,8 @@ from PIL import Image
 # Initialise camera
 camera = cv2.VideoCapture(0)
 
-camera.set(CAP_PROP_FRAME_WIDTH, 640)
-camera.set(CAP_PROP_FRAME_HEIGHT, 480)
+camera.set(3, 640)
+camera.set(4, 480)
 
 
 
