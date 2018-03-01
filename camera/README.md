@@ -7,3 +7,8 @@ Possible uses:
 * Read codes bar/QR
 * Calculate position based on landmarks
 * Object recognition
+
+
+
+USB-webcam flood fix:
+* /sbin/modprobe uvcvideo quirks=128 (and reconnect camera)
