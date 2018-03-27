@@ -24,8 +24,17 @@
 import logging
 import sys
 import time
+import socket
 
 from Adafruit_BNO055 import BNO055
+
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+clientsocket.connect(('localhost', 8089))
+clientsocket.send('Connection open\n')
+time.sleep(1)
+clientsocket.send('Start sending position update\n')
+id = "BOT1"
+packetno = 0
 
 
 # Create and configure the BNO sensor connection.  Make sure only ONE of the
@@ -62,6 +71,7 @@ print('Accelerometer ID:   0x{0:02X}'.format(accel))
 print('Magnetometer ID:    0x{0:02X}'.format(mag))
 print('Gyroscope ID:       0x{0:02X}\n'.format(gyro))
 
+
 print('Reading BNO055 data, press Ctrl-C to quit...')
 while True:
     # Read the Euler angles for heading, roll, pitch (all in degrees).
@@ -71,6 +81,15 @@ while True:
     # Print everything out.
     print('Heading={0:0.2F} Roll={1:0.2F} Pitch={2:0.2F}\tSys_cal={3} Gyro_cal={4} Accel_cal={5} Mag_cal={6}'.format(
           heading, roll, pitch, sys, gyro, accel, mag))
+
+    typeid = "BNO"
+    packetno +=1
+    msg = "$" + '{0:0.2F}' + "#" + '{1:0.2F}' + "#" + '{2:0.2F}'
+	clientsocket.send(msg)
+
+	#i += 1
+	time.sleep(0.05)
+
     # Other values you can optionally read:
     # Orientation as a quaternion:
     #x,y,z,w = bno.read_quaterion()
