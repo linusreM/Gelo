@@ -20,7 +20,7 @@ imgpoints = []
 
 numb_read = 0
 
-images = glob.glob('./pics/*.jpg')
+images = glob.glob('./calib_pics/*.jpg')
 
 for file_name in images:
 
