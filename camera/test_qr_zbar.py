@@ -8,8 +8,9 @@ from PIL import Image
 # Initialise camera
 camera = cv2.VideoCapture(0)
 
-camera.set(3, 640)
-camera.set(4, 480)
+# Option to set video frame resolution
+#camera.set(3, 640)
+#camera.set(4, 480)
 
 
 
@@ -46,8 +47,6 @@ while(True):
         print 'decoded', symbol.type, 'symbol', '"%s"' % symbol.data
       #  print symbol.location
 
-        #topLeftCorners, bottomLeftCorners, bottomRightCorners, topRightCorners = [item for item in symbol.location]
-        #frame = cv2.circle(frame, symbol.location[1], 20, (255,0,0), -1)
         try:
             frame = cv2.line(frame, symbol.location[0],symbol.location[1], (255,0,0), 3)
             frame = cv2.line(frame, symbol.location[1],symbol.location[2], (255,0,0), 3)
