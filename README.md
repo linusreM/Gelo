@@ -38,4 +38,7 @@ TODO
 	* Position verification
 * ZBar
 	* QR-code decoding	
+* MailIP
+	* https://gist.github.com/2987424.git
+		
 			
