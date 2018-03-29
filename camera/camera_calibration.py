@@ -7,6 +7,7 @@ if len(sys.argv) > 1:
 	save_file_name = sys.argv[1]
 else:
 	save_file_name = 'unnamed_camera'
+
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -19,7 +20,7 @@ imgpoints = []
 
 numb_read = 0
 
-images = glob.glob('*.jpg')
+images = glob.glob('./pics/*.jpg')
 
 for file_name in images:
 
