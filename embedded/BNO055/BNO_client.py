@@ -25,8 +25,67 @@ import logging
 import sys
 import time
 import socket
+import VL53L0X
+import RPi.GPIO as GPIO
 
 from Adafruit_BNO055 import BNO055
+
+# GPIO for Sensor 1 shutdown pin
+sensor1_shutdown = 5
+sensor2_shutdown = 6
+sensor3_shutdown = 13
+sensor4_shutdown = 19
+GPIO.setwarnings(False)
+
+# Setup GPIO for shutdown pins on each VL53L0X
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(sensor1_shutdown, GPIO.OUT)
+GPIO.setup(sensor2_shutdown, GPIO.OUT)
+GPIO.setup(sensor3_shutdown, GPIO.OUT)
+GPIO.setup(sensor4_shutdown, GPIO.OUT)
+
+# Set all shutdown pins low to turn off each VL53L0X
+GPIO.output(sensor1_shutdown, GPIO.LOW)
+GPIO.output(sensor2_shutdown, GPIO.LOW)
+GPIO.output(sensor3_shutdown, GPIO.LOW)
+GPIO.output(sensor4_shutdown, GPIO.LOW)
+
+# Keep all low for 500 ms or so to make sure they reset
+time.sleep(0.50)
+
+# Create one object per VL53L0X passing the address to give to
+# each.
+tof1 = VL53L0X.VL53L0X(address=0x2B)
+tof2 = VL53L0X.VL53L0X(address=0x2D)
+tof3 = VL53L0X.VL53L0X(address=0x2F)
+tof4 = VL53L0X.VL53L0X(address=0x3B)
+
+# Set shutdown pin high for the first VL53L0X then
+# call to start ranging
+GPIO.output(sensor1_shutdown, GPIO.HIGH)
+time.sleep(0.50)
+tof1.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+
+# Set shutdown pin high for the second VL53L0X then
+# call to start ranging
+GPIO.output(sensor2_shutdown, GPIO.HIGH)
+time.sleep(0.50)
+tof2.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+
+GPIO.output(sensor3_shutdown, GPIO.HIGH)
+time.sleep(0.50)
+tof3.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+
+GPIO.output(sensor4_shutdown, GPIO.HIGH)
+time.sleep(0.50)
+tof4.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+
+timing = tof1.get_timing()
+if (timing < 20000):
+    timing = 20000
+print ("Timing %d ms" % (timing/1000))
+
+# Init socket
 
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 print('attempting connect\n')
@@ -82,19 +141,38 @@ while True:
     heading, roll, pitch = bno.read_euler()
     if (heading < 0):
 	heading = heading+int(2048)
-    roll = 0  
-    pitch = 0 
+    roll = 0
+    pitch = 0
  # Read the calibration status, 0=uncalibrated and 3=fully calibrated.
     sys, gyro, accel, mag = bno.get_calibration_status()
     # Print everything out.
     msg=('Heading={0:0.2F} Roll={1:0.2F} Pitch={2:0.2F}\tSys_cal={3} Gyro_cal={4} Accel_cal={5} Mag_cal={6}'.format(
           heading, roll, pitch, sys, gyro, accel, mag))
     print(msg)
+
+    distance1 = tof1.get_distance()
+    if (distance1 < 0):
+        print ("%d - Error" % tof1.my_object_number)
+
+    distance2 = tof2.get_distance()
+    if (distance2 < 0):
+        print ("%d - Error" % tof2.my_object_number)
+
+    distance3 = tof3.get_distance()
+    if (distance3 < 0):
+        print ("%d - Error" % tof3.my_object_number)
+
+    distance4 = tof4.get_distance()
+    if (distance4 < 0):
+        print ("%d - Error" % tof4.my_object_number)
+
+    print ("Front: %d, Left: %d, Right: %d, Back: %d" % (distance1, distance2, distance3, distance4))
+    time.sleep(timing/100000.00)
     typeid = "BNO"
     packetno +=1
-    
-    msg2= str(heading) + "#" + str(roll) + "#" + str(pitch) + "#"
- 
+
+    msg2= str(heading) + "#" + str(roll) + "#" + str(pitch) + "#" + str(distance1) + "#" + str(distance2) + "#" + str(distance3) + "#" str(distance4) + "#"
+
     clientsocket.send(msg2)
 
     #i += 1
@@ -120,3 +198,11 @@ while True:
     # Sleep for a second until the next reading.
     time.sleep(0.05)
 
+tof1.stop_ranging()
+GPIO.output(sensor1_shutdown, GPIO.LOW)
+tof2.stop_ranging()
+GPIO.output(sensor2_shutdown, GPIO.LOW)
+tof3.stop_ranging()
+GPIO.output(sensor3_shutdown, GPIO.LOW)
+tof4.stop_ranging()
+GPIO.output(sensor4_shutdown, GPIO.LOW)
