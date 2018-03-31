@@ -28,13 +28,10 @@ import socket
 
 from Adafruit_BNO055 import BNO055
 
-clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-print('attempting connect\n')
-clientsocket.connect(('130.229.142.225', int(sys.argv[1])))
-print('Connection open\n')
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+clientsocket.connect(('localhost', 8090))
 clientsocket.send('Connection open\n')
 time.sleep(1)
-print('Start sending compass data\n')
 clientsocket.send('Start sending position update\n')
 id = "BOT1"
 packetno = 0
@@ -43,8 +40,7 @@ packetno = 0
 # Create and configure the BNO sensor connection.  Make sure only ONE of the
 # below 'bno = ...' lines is uncommented:
 # Raspberry Pi configuration with serial UART and RST connected to GPIO 18:
-bno = BNO055.BNO055(address=0x29 , gpio=21)
-bno.begin(0x0C)
+bno = BNO055.BNO055(address=0x29, gpio=21)
 # BeagleBone Black configuration with default I2C connection (SCL=P9_19, SDA=P9_20),
 # and RST connected to pin P9_12:
 #bno = BNO055.BNO055(rst='P9_12')
@@ -80,22 +76,16 @@ print('Reading BNO055 data, press Ctrl-C to quit...')
 while True:
     # Read the Euler angles for heading, roll, pitch (all in degrees).
     heading, roll, pitch = bno.read_euler()
-    if (heading < 0):
-	heading = heading+int(2048)
-    roll = 0  
-    pitch = 0 
- # Read the calibration status, 0=uncalibrated and 3=fully calibrated.
+    # Read the calibration status, 0=uncalibrated and 3=fully calibrated.
     sys, gyro, accel, mag = bno.get_calibration_status()
     # Print everything out.
-    msg=('Heading={0:0.2F} Roll={1:0.2F} Pitch={2:0.2F}\tSys_cal={3} Gyro_cal={4} Accel_cal={5} Mag_cal={6}'.format(
+    print('Heading={0:0.2F} Roll={1:0.2F} Pitch={2:0.2F}\tSys_cal={3} Gyro_cal={4} Accel_cal={5} Mag_cal={6}'.format(
           heading, roll, pitch, sys, gyro, accel, mag))
-    print(msg)
+
     typeid = "BNO"
     packetno +=1
-    
-    msg2= str(heading) + "#" + str(roll) + "#" + str(pitch) + "#"
- 
-    clientsocket.send(msg2)
+    msg = "$" + '{0:0.2F,' + "#" + '{1:0.2F}' + "#" + '{2:0.2F}'
+    clientsocket.send(msg)
 
     #i += 1
     time.sleep(0.05)
@@ -118,5 +108,4 @@ while True:
     # in meters per second squared):
     #x,y,z = bno.read_gravity()
     # Sleep for a second until the next reading.
-    time.sleep(0.05)
-
+    time.sleep(1)

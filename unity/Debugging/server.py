@@ -1,9 +1,10 @@
 import socket
 import time
 import errno
+import sys
 
 serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #initialize UDP stream socket
-serversocket.bind(('localhost', 8089)) #bind socket to port 3344
+serversocket.bind(('localhost', int(sys.argv[1]))) #bind socket to port 3344
 serversocket.listen(5) # become a server socket, maximum 5 connections
 while(1):
 	connection, address = serversocket.accept()

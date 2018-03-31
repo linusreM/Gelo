@@ -42,6 +42,7 @@ if len(sys.argv) == 2 and sys.argv[1].lower() == '-v':
     logging.basicConfig(level=logging.DEBUG)
 
 # Initialize the BNO055 and stop if something went wrong.
+bno.begin()
 if not bno.begin():
     raise RuntimeError('Failed to initialize BNO055! Is the sensor connected?')
 
