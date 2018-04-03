@@ -1,5 +1,4 @@
-# Simple Adafruit BNO055 sensor reading example.  Will print the orientation
-# and calibration data every second.
+# Simple Adafruit BNO055 sensor reading example.  Will print the orientation and calibration data every second.
 #
 # Copyright (c) 2015 Adafruit Industries
 # Author: Tony DiCola
@@ -31,7 +30,7 @@ from Adafruit_BNO055 import BNO055
 # Create and configure the BNO sensor connection.  Make sure only ONE of the
 # below 'bno = ...' lines is uncommented:
 # Raspberry Pi configuration with serial UART and RST connected to GPIO 18:
-bno = BNO055.BNO055(address=0x29, gpio=21)
+bno = BNO055.BNO055(address=0x29,rst=11)
 # BeagleBone Black configuration with default I2C connection (SCL=P9_19, SDA=P9_20),
 # and RST connected to pin P9_12:
 #bno = BNO055.BNO055(rst='P9_12')
@@ -42,9 +41,16 @@ if len(sys.argv) == 2 and sys.argv[1].lower() == '-v':
     logging.basicConfig(level=logging.DEBUG)
 
 # Initialize the BNO055 and stop if something went wrong.
-bno.begin()
-if not bno.begin():
-    raise RuntimeError('Failed to initialize BNO055! Is the sensor connected?')
+while (1):
+	try:
+		bno.begin()
+		break
+	except:
+		print("Begin Failed!")
+
+#bno.begin()
+#if not bno.begin():
+#    raise RuntimeError('Failed to initialize BNO055! Is the sensor connected?')
 
 # Print system status and self test result.
 status, self_test, error = bno.get_system_status()
