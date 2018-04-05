@@ -1,3 +1,6 @@
+
+#to run: python BNO_client.py GYRO BNO SOCKET -v
+
 # Simple Adafruit BNO055 sensor reading example.  Will print the orientation
 # and calibration data every second.
 #
@@ -27,20 +30,18 @@ import time
 import socket
 import VL53L0X
 import RPi.GPIO as GPIO
+from Queue import Queue
+import threading
+from stepper import *
 
-from Adafruit_BNO055 import BNO055
+tof = ""
+stepno = 0
 
-# Initialize BNO055
-bno = BNO055.BNO055(address=0x29)
+range_lock = threading.Lock()
 
 # Verbose debugging if arg -v
-if len(sys.argv) == 2 and sys.argv[1].lower() == '-v':
+if len(sys.argv) == 2 and sys.argv[2].lower() == '-v':
     logging.basicConfig(level=logging.DEBUG)
-
-bno.begin()
-
-if not bno.begin():
-    raise RuntimeError('Failed to initialize BNO055! Is the sensor connected?')
 
 
 # GPIO for Sensor 1 shutdown pin
@@ -65,30 +66,7 @@ GPIO.output(sensor3_shutdown, GPIO.LOW)
 GPIO.output(sensor4_shutdown, GPIO.LOW)
 
 # Keep all low for 500 ms or so to make sure they reset
-time.sleep(0.50)
-
-
-# Print system status and self test result.
-status, self_test, error = bno.get_system_status()
-print('System status: {0}'.format(status))
-print('Self test result (0x0F is normal): 0x{0:02X}'.format(self_test))
-# Print out an error if system status is in error mode.
-if status == 0x01:
-    print('System error: {0}'.format(error))
-    print('See datasheet section 4.3.59 for the meaning.')
-
-# Print BNO055 software revision and other diagnostic data.
-sw, bl, accel, mag, gyro = bno.get_revision()
-print('Software version:   {0}'.format(sw))
-print('Bootloader version: {0}'.format(bl))
-print('Accelerometer ID:   0x{0:02X}'.format(accel))
-print('Magnetometer ID:    0x{0:02X}'.format(mag))
-print('Gyroscope ID:       0x{0:02X}\n'.format(gyro))
-
-
-
-# Keep all low for 500 ms or so to make sure they reset
-time.sleep(0.50)
+time.sleep(0.5)
 
 # Create one object per VL53L0X passing the address to give to
 # each.
@@ -100,7 +78,7 @@ tof4 = VL53L0X.VL53L0X(address=0x4B)
 # Set shutdown pin high for the first VL53L0X then
 # call to start ranging
 GPIO.output(sensor1_shutdown, GPIO.HIGH)
-time.sleep(0.50)
+time.sleep(0.5)
 tof1.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
 # Set shutdown pin high for the second VL53L0X then
@@ -136,91 +114,55 @@ clientsocket.send('Start sending position update\n')
 id = "BOT1"
 packetno = 0
 
-
-# Create and configure the BNO sensor connection.  Make sure only ONE of the
-# below 'bno = ...' lines is uncommented:
-# Raspberry Pi configuration with serial UART and RST connected to GPIO 18:
-
-# BeagleBone Black configuration with default I2C connection (SCL=P9_19, SDA=P9_20),
-# and RST connected to pin P9_12:
-#bno = BNO055.BNO055(rst='P9_12')
-
-
-# Print BNO055 software revision and other diagnostic data.
-sw, bl, accel, mag, gyro = bno.get_revision()
-print('Bootloader version: {0}'.format(bl))
-print('Accelerometer ID:   0x{0:02X}'.format(accel))
-print('Magnetometer ID:    0x{0:02X}'.format(mag))
-print('Gyroscope ID:       0x{0:02X}\n'.format(gyro))
-
-
 print('Reading sensor data, press Ctrl-C to quit...')
-while True:
-    # Read the Euler angles for heading, roll, pitch (all in degrees).
-    heading, roll, pitch = bno.read_euler()
-    if (heading < 0):
-	heading = heading+int(2048)
-    roll = 0
-    pitch = 0
- # Read the calibration status, 0=uncalibrated and 3=fully calibrated.
-    sys, gyro, accel, mag = bno.get_calibration_status()
-    # Print everything out.
-    print ('Heading={0:0.2F} Roll={1:0.2F} Pitch={2:0.2F}\tSys_cal={3} Gyro_cal={4} Accel_cal={5} Mag_cal={6}'.format(
-          heading, roll, pitch, sys, gyro, accel, mag))
-    
-    distance1 = tof1.get_distance()
-    if (distance1 < 0):
-        distance1 = "%"
 
-    distance2 = tof2.get_distance()
-    if (distance2 < 0):
-        distance2 = "%"
+def ranging(threadname, q):
+	while (True):
+		
+		global tof
+		print("Getting distance values")
+		tof_Front = tof1.get_distance()
+		time.sleep(0.02)
+		tof_Left = tof2.get_distance()
+		time.sleep(0.02)
+		tof_Right= tof3.get_distance()
+		time.sleep(0.02)
+		tof_Back = tof4.get_distance()
+		time.sleep(0.02)
+		#print ("Front: %f, Left: %f, Right: %f, Back: %f" (tof_Front, tof_Left, tof_Right, tof_Back))
+		tof = (str(tof_Front) + "#" + str(tof_Back) + "#" + str(tof_Left) + "#" + str(tof_Right) + "#")
+		time.sleep(0.02)
 
-    distance3 = tof3.get_distance()
-    if (distance3 < 0):
-         distance3 = "%"
+def client(threadname, q, steps):
+	while(True):
+		print("client initiated")
+		global tof
+		global stepno
+		msg=str(id) + "#" + "FWD" + "#" + str(stepno) + "#" +  str(tof) + "$"
+		print(msg)
+		clientsocket.send(msg)
+		time.sleep(0.1)
 
-    distance4 = tof4.get_distance()
-    if (distance4 < 0):
-         distance4 = "%"
-
-
-    print ("Front: %d, Left: %d, Right: %d, Back: %d" % (distance1, distance2, distance3, distance4))
-    time.sleep(timing/100000.00)
-    typeid = "BNO"
-    packetno +=1
-
-    msg2= str(heading) + "#" + str(roll) + "#" + str(pitch) + "#" + str(distance1) + "#" + str(distance2) + "#" + str(distance3) + "#" +  str(distance4) + "#"
-
-    clientsocket.send(msg2)
-
-    time.sleep(0.05)
-
-    # Other values you can optionally read:
-    # Orientation as a quaternion:
-    #x,y,z,w = bno.read_quaterion()
-    # Sensor temperature in degrees Celsius:
-    #temp_c = bno.read_temp()
-    # Magnetometer data (in micro-Teslas):
-    #x,y,z = bno.read_magnetometer()
-    # Gyroscope data (in degrees per second):
-    #x,y,z = bno.read_gyroscope()
-    # Accelerometer data (in meters per second squared):
-    #x,y,z = bno.read_accelerometer()
-    # Linear acceleration data (i.e. acceleration from movement, not gravity--
-    # returned in meters per second squared):
-    #x,y,z = bno.read_linear_acceleration()
-    # Gravity acceleration data (i.e. acceleration just from gravity--returned
-    # in meters per second squared):
-    #x,y,z = bno.read_gravity()
-    # Sleep for a second until the next reading.
-    time.sleep(0.05)
-
-tof1.stop_ranging()
-GPIO.output(sensor1_shutdown, GPIO.LOW)
-tof2.stop_ranging()
-GPIO.output(sensor2_shutdown, GPIO.LOW)
-tof3.stop_ranging()
-GPIO.output(sensor3_shutdown, GPIO.LOW)
-tof4.stop_ranging()
-GPIO.output(sensor4_shutdown, GPIO.LOW)
+def Main():
+	motor_setup()
+	global tof
+	global stepno
+	t1 = threading.Thread(target=ranging, args=("TOF", tof))
+	t2 = threading.Thread(target=client, args=("Client", tof, stepno))
+	t3 = threading.Thread(target=motor_move, args=(FW,500.0,1.0/1500.0))
+	t1.start()
+	t2.start()
+	t3.start()
+#	t1.join()
+#	t2.join()
+	t3.join()
+if __name__ == '__main__':
+	Main()
+#tof1.stop_ranging()
+#GPIO.output(sensor1_shutdown, GPIO.LOW)
+#tof2.stop_ranging()
+#GPIO.output(sensor2_shutdown, GPIO.LOW)
+#tof3.stop_ranging()
+#GPIO.output(sensor3_shutdown, GPIO.LOW)
+#tof4.stop_ranging()
+#GPIO.output(sensor4_shutdown, GPIO.LOW)
