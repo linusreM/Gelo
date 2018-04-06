@@ -1,3 +1,19 @@
+
+import logging
+import sys
+import time
+import socket
+import VL53L0X
+import RPi.GPIO as GPIO
+from Queue import Queue
+import threading
+from stepper_class import *
+import numpy as np
+
+#Global Variables
+tof = ""
+stepno = 0
+
 # Verbose debugging if arg -v
 if len(sys.argv) == 2 and sys.argv[2].lower() == '-v':
     logging.basicConfig(level=logging.DEBUG)
@@ -76,8 +92,8 @@ packetno = 0
 print('Reading sensor data, press Ctrl-C to quit...')
 
 
-def ranging(threadname, q):
-	while (True):
+def ranging(steps):
+	while (float(steps)>0):
 
 		global tof
 		print("Getting distance values")
@@ -93,29 +109,38 @@ def ranging(threadname, q):
 		tof = (str(tof_Front) + "#" + str(tof_Back) + "#" + str(tof_Left) + "#" + str(tof_Right) + "#")
 		time.sleep(0.02)
 
-def client(threadname, q, steps):
+def client(dir,steps):
 	while(True):
-		print("client initiated")
+		print(steps)
 		global tof
 		global stepno
-		msg=str(id) + "#" + "FWD" + "#" + str(stepno) + "#" +  str(tof) + "$"
+		msg=str(id) + "#" + "FW" + "#" + str(steps) + "#" +  "0.0" + "$"
 		print(msg)
 		clientsocket.send(msg)
-		time.sleep(0.1)
+		time.sleep(0.05)
 
 def Main():
 
+	DISTANCE = raw_input("Distance [mm]:")
 	global tof
-	M=MOTOR()
-	t1 = threading.Thread(target=ranging, args=("TOF", tof))
-	t2 = threading.Thread(target=client, args=("Client", tof, stepno))
+	M = MOTOR()
+	#t1 = threading.Thread(target=ranging, args=(int(M.NBRSTEP)))
+	#t2 = threading.Thread(target=client, args=(FW, M.NBRSTEP))
 	#t3 = threading.Thread(target=motor_move, args=())
-	t1.start()
-	t2.start()
+	#t1.start()
+	#t2.start()
+	t3 = threading.Thread(target= M.motor_move, args = ("FW", DISTANCE, 1.0/1500.0))
+        t3.start()
+        while(True):
 
-	While (1):
-			DISTANCE = raw_input("Distance [mm]:")
-			M.motor_move(FW,float(DISTANCE), 1.0/1500.0)
+		if(M.NBRSTEP>0):
+			print(M.NBRSTEP)
+			msg=str(id) + "#" + "FW" + "#" + str(M.NBRSTEP) + "#" +  "0.0" + "$"
+              		print(msg)
+                	clientsocket.send(msg)
+                	time.sleep(0.1)
+
+
 #t3.start()
 #	t1.join()
 #	t2.join()
