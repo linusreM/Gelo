@@ -1,5 +1,6 @@
 from threading import Thread 
 import cv2
+import numpy as np
 
 class usbVideoStream:
 
@@ -11,6 +12,10 @@ class usbVideoStream:
 		(self.grabbed, self.frame) = self.stream.read()
 
 		self.stopped = False
+
+
+		with np.load('usbcamera'+ str(resolution[0]) + '_intrinsics.npz') as X:
+			self.mtx, self.dist, self.rvecs, self.tvecs = [X[i] for i in ('mtx','dist','rvecs','tvecs')]
 
 
 	def start(self):
@@ -28,6 +33,15 @@ class usbVideoStream:
 
 	def read(self):
 		return self.frame
+
+	def readUndistorted(self):
+		img = self.frame
+		h, w = img.shape[:2]
+		newcameramtx, roi = cv2.getOptimalNewCameraMatrix(self.mtx, self.dist, (w,h), 1, (w,h))
+		map1, map2 = cv2.initUndistortRectifyMap(self.mtx, self.dist, None, newcameramtx, (w,h), 5)
+		undistorted_img = cv2.remap(img, map1, map2, interpolation=cv2.INTER_LINEAR)
+		return undistorted_img
+
 
 	def stop(self):
 		self.stopped = True
