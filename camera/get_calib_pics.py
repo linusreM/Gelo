@@ -21,6 +21,7 @@ else:
 	quit()
 
 vs = VideoStream(isPiCamera = isPiCamera, resolution = resolution).start()
+time.sleep(2.0)
 numb_of_pics = 0
 
 
@@ -33,7 +34,7 @@ while(1):
 	if keypress == 32:
 		numb_of_pics += 1
 		file_name = cam_type + str(resolution[0]) + '_' + str(numb_of_pics)
-		cv2.imwrite('./calib_pics/' + file_name + '.jpg', img)
+		cv2.imwrite('./calib_pics2/' + file_name + '.jpg', img)
 	
 	if keypress == ord('q'):
 		print str(numb_of_pics) + ' pictures saved'

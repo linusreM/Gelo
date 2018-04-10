@@ -1,6 +1,7 @@
 from videostream import VideoStream
 import sys
 import glob	
+import time
 import cv2
 import numpy as np
 
@@ -43,6 +44,7 @@ objp[:,:2] = np.mgrid[0:9,0:6].T.reshape(-1,2)
 axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 
 vs = VideoStream(isPiCamera = isPiCamera, resolution = resolution).start()
+time.sleep(2.0)
 
 
 
