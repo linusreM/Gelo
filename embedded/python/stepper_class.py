@@ -44,29 +44,36 @@ class MOTOR(object):
 
 		self.nbrStep = 0
 		self.stepspermm = 2048.0/(75.61*np.pi)
+		self.more = 0
+		self.stepperdegree = ((215.0*np.pi)/360)*(2048.0/(75.61*np.pi))
+		self.dir = 1
 
-
-	def motor_turn(self, rotation_direction, rotation_degree, max_velocity, tilt_ramp=10.0):
+	def motor_turn(self, rotation_degree, max_velocity, tilt_ramp=10.0):
 	        #stepspermm = 2048.0/(75.61*np.pi)
-		stepperdegree = ((215.0*np.pi)/360)*(2048.0/(75.61*np.pi))
+		#stepperdegree = ((215.0*np.pi)/360)*(2048.0/(75.61*np.pi))
+	 	STEPCOUNTf = self.stepperdegree*float(rotation_degree)   # Steps per Revolution (360 / 7.5)
+	   	STEPCOUNT = int(STEPCOUNTf) 	#Whole steps
 
-	  	STEPCOUNTf = stepperdegree*float(rotation_degree)   # Steps per Revolution (360 / 7.5)
-	    	STEPCOUNT = int(STEPCOUNTf) 	#Whole steps
-
-	    	STARTDELAY =100 		#Denominator  of delay  fraction
-	    	self.nbrStep =0 			#How many steps has happened
-	    	RAMP = STEPCOUNT/2
-	    	print(STEPCOUNT)
+	   	STARTDELAY =100 		#Denominator  of delay  fraction
+	   	self.nbrStep =0 			#How many steps has happened
+	   	RAMP = abs(STEPCOUNT)/2
+	   	print(abs(STEPCOUNT))
 
 		GPIO.output(SLEEP, 1)
-		if (rotation_direction == 3):
-	        	GPIO.output(DIR1, CW)
-	        	GPIO.output(DIR2, CW)
+		if (rotation_degree > 0):
+	            GPIO.output(DIR1, CW)
+	            GPIO.output(DIR2, CW)
+		    self.dir = 1
+	
 		else:
-			GPIO.output(DIR1, CCW)
-	        	GPIO.output(DIR2, CCW)
+		    GPIO.output(DIR1, CCW)
+	            GPIO.output(DIR2, CCW)
+		    self.dir = -1
 
-	        for x in range(STEPCOUNT):
+
+		self.more = 1
+
+	        for x in range(abs(STEPCOUNT)):
 	                if self.nbrStep < RAMP:	#Positive acceleration
 	                   STARTDELAY +=1*tilt_ramp
 	                   delay = 1.0/STARTDELAY
@@ -84,32 +91,39 @@ class MOTOR(object):
 	                sleep(delay)
 
 	                self.nbrStep+=1
-
+	
+		self.more = 0
+		sleep(0.1)
 		self.nbrStep = 0
 
 		GPIO.output(SLEEP, 0)
 		thread.exit()
 
 
-	def motor_move(self, movement_direction,movement_distance, max_velocity=(1.0/1500.0), tilt_ramp=10.0):
+	def motor_move(self, movement_distance, max_velocity=(1.0/1500.0), tilt_ramp=10.0):
 
 	        STEPCOUNTf = self.stepspermm*float(movement_distance)   # Steps per Revolution (360 / 7.5)
         	STEPCOUNT = int(STEPCOUNTf)     #Whole steps
 
         	STARTDELAY =100                 #Denominator  of delay  fraction
         	self.nbrStep =0                      #How many steps has happened
-        	RAMP = STEPCOUNT/2
-        	print(STEPCOUNT)
+        	RAMP = abs(STEPCOUNT)/2
+        	print(abs(STEPCOUNT))
         	GPIO.output(SLEEP, 1)
-		if (movement_direction == 1):
+
+		if (movement_distance > 0):			#Go Forward if distance is positive
        		 	GPIO.output(DIR1, CW)
         	 	GPIO.output(DIR2, CCW)
+			self.dir = 1.0
 
 		else:
 			GPIO.output(DIR1, CCW)
-                	GPIO.output(DIR2, CW)
+	                GPIO.output(DIR2, CW)
+			self.dir = -1.0
 
-        	for x in range(STEPCOUNT):
+		self.more = 1
+
+        	for x in range(abs(STEPCOUNT)):
                 	if self.nbrStep < RAMP:      #Positive acceleration
                    		STARTDELAY +=1*tilt_ramp
                    		delay = 1.0/STARTDELAY
@@ -129,7 +143,8 @@ class MOTOR(object):
                 	self.nbrStep+=1
 
 
-
+		self.more = 0
+		sleep(0.1)
 		self.nbrStep = 0
 
 	        GPIO.output(SLEEP, 0)

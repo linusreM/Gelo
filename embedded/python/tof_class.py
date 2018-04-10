@@ -43,21 +43,21 @@ class TOF(object):
 		# Set shutdown pin high for the first VL53L0X then
 		# call to start ranging
 		GPIO.output(sensor1_shutdown, GPIO.HIGH)
-		time.sleep(0.5)
+		time.sleep(0.1)
 		tof1.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
 		# Set shutdown pin high for the second VL53L0X then
 		# call to start ranging
 		GPIO.output(sensor2_shutdown, GPIO.HIGH)
-		time.sleep(0.50)
+		time.sleep(0.1)
 		tof2.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
 		GPIO.output(sensor3_shutdown, GPIO.HIGH)
-		time.sleep(0.50)
+		time.sleep(0.1)
 		tof3.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
 		GPIO.output(sensor4_shutdown, GPIO.HIGH)
-		time.sleep(0.50)
+		time.sleep(0.1)
 		tof4.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
 		timing = tof1.get_timing()
