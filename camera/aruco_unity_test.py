@@ -1,0 +1,71 @@
+from videostream import videostream
+import numpy as np
+import cv2
+import cv2.aruco as aruco
+import sys
+import time
+import socket
+
+
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+print('attempting connect\n')
+clientsocket.connect(('130.229.166.58', int(sys.argv[3])))
+print('Connection open\n')
+#clientsocket.send('Connection open\n')
+time.sleep(1)
+print('Start sending data\n')
+#clientsocket.send('Start sending position update\n')
+id = "BOT1"
+type = "QR"
+
+
+if int(sys.argv[1]) == 1:
+    isPiCamera = True
+else:
+    isPiCamera = False
+
+if int(sys.argv[2]) == 640:
+    resolution = (640,480)
+elif int(sys.argv[2]) == 320:
+    resolution = (320,240)
+else:
+    print "Not valid resolution"
+    quit()
+
+
+dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+parameters = aruco.DetectorParameters_create()
+
+parameters.cornerRefinementMethod = 0
+parameters.cornerRefinementWinSize = 5
+parameters.cornerRefinementMaxIterations = 100 
+parameters.cornerRefinementMinAccuracy = 0.0001
+
+vs = VideoStream(isPiCamera = isPiCamera, resolution = resolution).start()
+time.sleep(2.0)
+
+
+img = vs.readUndistorted()
+gray = cv2.cv2Color(img, cv2.COLOR_BGR2GRAY) #EVENTUELLT
+
+corners, ids, rejected = aruco.detectMarkers(gray, dictionary, parameters = parameters)
+
+if (ids.length > 0):
+		rvecs, tvecs, obj = aruco.estimatePoseSingleMarkers(corners, 0.06518, vs.mtx, vs.dist)
+
+		for marker in ids:
+			tvecs_x = marker.tvecs[0]
+			tvecs_y = marker.tvecs[1]
+			tvecs_z = marker.tvecs[2]
+
+			rvecs_x = marker.rvecs[0]
+			rvecs_y = marker.rvecs[1]
+			rvecs_z = marker.rvecs[2]
+
+			msg = "{}#{}#{}#{}#{}#{}#{}#{}#{}$".format(id, type, 1, tvecs_x, tvecs_y, tvecs_z, rvecs_x, rvecs_y, rvecs_z) 
+			print msg
+			clientsocket.send(msg)
+else:
+	print "no code"
+
+vs.stop()
