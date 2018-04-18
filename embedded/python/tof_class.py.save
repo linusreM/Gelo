@@ -39,10 +39,6 @@ tof4 = VL53L0X.VL53L0X(address=0x4B)
 class TOF(object):
 	def __init__(self):
 
-		self.tof_Front = 0
-		self.tof_Back = 0
-		self.tof_Left = 0
-		self.tof_Right = 0
 		self.tofVal = "%"
 
 		# Set shutdown pin high for the first VL53L0X then
@@ -73,14 +69,14 @@ class TOF(object):
 
 	def ranging(self):
         	while (True):
-	                self.tof_Front = tof1.get_distance()
+	                tof_Front = tof1.get_distance()
                		time.sleep(0.02)
-                	self.tof_Left = tof2.get_distance()
+                	tof_Left = tof2.get_distance()
                 	time.sleep(0.02)
-                	self.tof_Right= tof3.get_distance()
+                	tof_Right= tof3.get_distance()
                 	time.sleep(0.02)
-                	self.tof_Back = tof4.get_distance()
+                	tof_Back = tof4.get_distance()
                 	time.sleep(0.02)
                 	#print ("Front: %f, Left: %f, Right: %f, Back: %f" (tof_Front, tof_Left, tof_Right, tof_Back))
-                	self.tofVal = (str(self.tof_Front) + "#" + str(self.tof_Back) + "#" + str(self.tof_Left) + "#" + str(self.tof_Right) + "#")
+                	self.tofVal = (str(tof_Front) + "#" + str(tof_Back) + "#" + str(tof_Left) + "#" + str(tof_Right) + "#")
                 	time.sleep(0.02)
