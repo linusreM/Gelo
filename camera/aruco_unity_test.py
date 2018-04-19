@@ -1,4 +1,4 @@
-from videostream import videostream
+from videostream import VideoStream
 import numpy as np
 import cv2
 import cv2.aruco as aruco
@@ -9,7 +9,7 @@ import socket
 
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 print('attempting connect\n')
-clientsocket.connect(('130.229.166.58', int(sys.argv[3])))
+clientsocket.connect(('130.229.145.168', int(sys.argv[3])))
 print('Connection open\n')
 #clientsocket.send('Connection open\n')
 time.sleep(1)
@@ -36,7 +36,7 @@ else:
 dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
 parameters = aruco.DetectorParameters_create()
 
-parameters.cornerRefinementMethod = 0
+parameters.cornerRefinementMethod = 1
 parameters.cornerRefinementWinSize = 5
 parameters.cornerRefinementMaxIterations = 100 
 parameters.cornerRefinementMinAccuracy = 0.0001
@@ -46,7 +46,7 @@ time.sleep(2.0)
 
 
 img = vs.readUndistorted()
-gray = cv2.cv2Color(img, cv2.COLOR_BGR2GRAY) #EVENTUELLT
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #EVENTUELLT
 
 corners, ids, rejected = aruco.detectMarkers(gray, dictionary, parameters = parameters)
 
