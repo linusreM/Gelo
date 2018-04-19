@@ -74,23 +74,23 @@ class MOTOR(object):
         self.more = 1
 
         for x in range(abs(STEPCOUNT)):
-                if self.nbrStep < RAMP:	#Positive acceleration
-                   STARTDELAY +=1*tilt_ramp
-                   delay = 1.0/STARTDELAY
+            if self.nbrStep < RAMP:	#Positive acceleration
+               STARTDELAY +=1*tilt_ramp
+               delay = 1.0/STARTDELAY
 
-                if self.nbrStep > RAMP:	#Negative acceleration
-                    STARTDELAY -=1*tilt_ramp
-                    delay = 1.0/STARTDELAY
+            if self.nbrStep > RAMP:	#Negative acceleration
+                STARTDELAY -=1*tilt_ramp
+                delay = 1.0/STARTDELAY
 
-                if delay<max_velocity:	#Continiuous speed
-                   delay = max_velocity
+            if delay<max_velocity:	#Continiuous speed
+               delay = max_velocity
 
-                GPIO.output(STEP, GPIO.HIGH)
-                sleep(delay)
-                GPIO.output(STEP, GPIO.LOW)
-                sleep(delay)
+            GPIO.output(STEP, GPIO.HIGH)
+            sleep(delay)
+            GPIO.output(STEP, GPIO.LOW)
+            sleep(delay)
 
-                self.nbrStep+=1
+            self.nbrStep+=1
 
         self.more = 0
         sleep(0.01)
@@ -120,8 +120,8 @@ class MOTOR(object):
             GPIO.output(DIR1, CCW)
             GPIO.output(DIR2, CW)
             self.dir = -1.0
-
         self.more = 1
+        print(abs(STEPCOUNT))
 
         for x in range(abs(STEPCOUNT)):
             if self.nbrStep < RAMP:      #Positive acceleration
