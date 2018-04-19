@@ -1,4 +1,4 @@
-from videostream import videostream
+from videostream import VideoStream
 import numpy as np
 import cv2
 import cv2.aruco as aruco
@@ -9,7 +9,7 @@ import socket
 
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 print('attempting connect\n')
-clientsocket.connect(('130.229.166.58', int(sys.argv[3])))
+clientsocket.connect(('130.229.182.39', int(sys.argv[3])))
 print('Connection open\n')
 #clientsocket.send('Connection open\n')
 time.sleep(1)
@@ -36,36 +36,52 @@ else:
 dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
 parameters = aruco.DetectorParameters_create()
 
-parameters.cornerRefinementMethod = 0
+parameters.cornerRefinementMethod = 1
 parameters.cornerRefinementWinSize = 5
-parameters.cornerRefinementMaxIterations = 100 
+parameters.cornerRefinementMaxIterations = 30 
 parameters.cornerRefinementMinAccuracy = 0.0001
 
 vs = VideoStream(isPiCamera = isPiCamera, resolution = resolution).start()
 time.sleep(2.0)
 
 
+
 img = vs.readUndistorted()
-gray = cv2.cv2Color(img, cv2.COLOR_BGR2GRAY) #EVENTUELLT
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #EVENTUELLT
 
 corners, ids, rejected = aruco.detectMarkers(gray, dictionary, parameters = parameters)
+rvecs, tvecs, obj = aruco.estimatePoseSingleMarkers(corners, 65.18, vs.mtx, vs.dist)
 
-if (ids.length > 0):
-		rvecs, tvecs, obj = aruco.estimatePoseSingleMarkers(corners, 0.06518, vs.mtx, vs.dist)
+try:
+	if (rvecs.size > 0):
 
-		for marker in ids:
-			tvecs_x = marker.tvecs[0]
-			tvecs_y = marker.tvecs[1]
-			tvecs_z = marker.tvecs[2]
+		for marker in tvecs:
+			tvecs_x = marker[0,0]
+			tvecs_y = marker[0,1]
+			tvecs_z = marker[0,2]
 
-			rvecs_x = marker.rvecs[0]
-			rvecs_y = marker.rvecs[1]
-			rvecs_z = marker.rvecs[2]
+		for marker in rvecs:
+			#print marker
+			rvecs_x = marker[0,0]
+			rvecs_y = marker[0,1]
+			rvecs_z = marker[0,2]
 
-			msg = "{}#{}#{}#{}#{}#{}#{}#{}#{}$".format(id, type, 1, tvecs_x, tvecs_y, tvecs_z, rvecs_x, rvecs_y, rvecs_z) 
-			print msg
-			clientsocket.send(msg)
-else:
+		msg = "{}#{}#{}#{}#{}#{}#{}#{}#{}$".format(
+			id, 
+			type, 
+			"data", 
+			tvecs_x, 
+			tvecs_y, 
+			tvecs_z, 
+			rvecs_x, 
+			rvecs_y, 
+			rvecs_z
+		) 
+		
+		print msg
+		clientsocket.send(msg)
+
+except:
 	print "no code"
 
 vs.stop()
