@@ -7,12 +7,13 @@ import VL53L0X
 import RPi.GPIO as GPIO
 from Queue import Queue
 import threading
-from stepper_class import *
+from mStepper_class import *
 from tof_class import *
 import numpy as np
 from Adafruit_BNO055 import BNO055
 import time
 import errno
+from multiprocessing import Process, Value, Lock
 
 def explore(tof_fwd, tof_left, tof_right, nbrtimes):
 
@@ -31,10 +32,9 @@ def explore(tof_fwd, tof_left, tof_right, nbrtimes):
 
         else:
             return ("error")
-    else:
-        if (tof_left>tof_right):
+    elif (tof_left>tof_right):
             return ("BOT1"+"#"+"TURN"+"#"+"-50"+"$")
-	else:	  
+    else:
             return ("BOT1"+"#"+"TURN"+"#"+"50"+"$")
 
 def Main():
@@ -45,6 +45,10 @@ def Main():
     command = ""
     ID = "BOT1"
     stopFlag = 1
+    nbrStep = Value('i', 0)
+    more = Value('i', 0)
+    lock = Lock()
+
 
     # Verbose debugging if arg -v
     if len(sys.argv) == 2 and sys.argv[2].lower() == '-v':
@@ -57,7 +61,7 @@ def Main():
         clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         #clientsocket.bind(('130.229.189.118', int(sys.argv[1])))
         print('attempting connect\n')
-        clientsocket.connect(('130.229.189.118', int(sys.argv[1])))
+        clientsocket.connect(('localhost', int(sys.argv[1])))
         print('Connection open\n')
         clientsocket.send('Connection open\n')
         time.sleep(1)
@@ -76,7 +80,7 @@ def Main():
 
     while(True):
 
-        if (m.nbrStep == 0 and expCount == 0):
+        if (nbrStep.value == 0 and expCount == 0):
             command = ""
 
             try:
@@ -108,8 +112,8 @@ def Main():
             expCount -= 1
 
         if (command == "MOVE"):
-            motor_thread = threading.Thread(target= m.motor_move, args = (float(value), 1.0/1024.0))
-            motor_thread.start()
+            motor_process = Process(target= m.motor_move, args = (nbrStep, more, lock, float(value)))
+            motor_process.start()
             time.sleep(0.1)
 
         elif (command == "TURN"):
@@ -120,24 +124,24 @@ def Main():
         else:
             print("No valid command")
 
-        while(m.more == 1 or stopFlag == 0):
-	    stopFlag = 0
+        while(more.value == 1 or stopFlag == 0):
+            stopFlag = 0
             if (command == "MOVE"):
-                mmStep = m.dir*m.nbrStep/m.stepspermm
+                mmStep = m.dir*nbrStep.value/m.stepspermm
 
             else:
-                mmStep = m.dir*m.nbrStep/m.stepperdegree
+                mmStep = m.dir*nbrStep.value/m.stepperdegree
 
             tofVal = (str(tof1.get_distance()) + "#" + str(tof4.get_distance()) + "#" + str(tof2.get_distance()) + "#" + str(tof3.get_distance()) + "#")
             time.sleep(0.1)
-            msg=str(ID) + "#" + str(command) + "#" + str(m.more) + "#" + str(mmStep) + "#" +  str(tofVal) + "$"
+            msg=str(ID) + "#" + str(command) + "#" + str(more.value) + "#" + str(mmStep) + "#" +  str(tofVal) + "$"
 
             if (int(sys.argv[1]) is not 0):
                 clientsocket.send(msg)
 
             print(msg)
-	    if (m.more == 0):
-		stopFlag = 1
+        if (more.value == 0):
+            stopFlag = 1
 
         command = ""
 
