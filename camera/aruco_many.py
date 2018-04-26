@@ -81,9 +81,6 @@ while True:
 	except:
 		print "no code"
 
-				
-=======
-
 img = vs.readUndistorted()
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #EVENTUELLT
 

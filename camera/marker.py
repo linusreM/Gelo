@@ -1,13 +1,9 @@
-import cv2
-import cv2.aruco as aruco 
-import numpy
 
 
 class Marker:
 	def __init__(self, corners, data, tvecs, rvecs):
 		
 		self.corners = corners
-		print corners
 		self.data = data[0]
 
 		self.tvecs_x = tvecs[0,0]
