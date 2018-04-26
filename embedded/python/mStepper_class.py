@@ -2,6 +2,7 @@ import numpy as np
 from time import sleep
 import RPi.GPIO as GPIO
 import thread
+from multiprocessing import Value
 
 
 M2 = 18
@@ -42,7 +43,7 @@ class MOTOR(object):
 
         VELMAX=1.0/1664
 
-        self.nbrStep = 0
+        self.internal_step = 0
         self.stepspermm = 2048.0/(75.61*np.pi)
         self.more = 0
         self.stepperdegree = ((215.0*np.pi)/360)*(2048.0/(75.61*np.pi))
@@ -99,13 +100,17 @@ class MOTOR(object):
         thread.exit()
 
 
-    def motor_move(self, movement_distance, max_velocity=(1.0/1500.0), tilt_ramp=10.0):
-
+    def motor_move(self, nbrStep, more, lock, movement_distance):
+        max_velocity=(1.0/1500.0)
+        tilt_ramp=10.0
         STEPCOUNTf = self.stepspermm*float(movement_distance)   # Steps per Revolution (360 / 7.5)
         STEPCOUNT = int(STEPCOUNTf)     #Whole steps
 
-        STARTDELAY =100                 #Denominator  of delay  fraction
-        self.nbrStep =0                      #How many steps has happened
+        STARTDELAY =100
+        lock.acquire()                 #Denominator  of delay  fraction
+        nbrStep.value = 0
+        self.internal_step = nbrStep.value
+        lock.release()                      #How many steps has happened
         RAMP = abs(STEPCOUNT)/2
         print(abs(STEPCOUNT))
         GPIO.output(SLEEP, 1)
@@ -119,15 +124,18 @@ class MOTOR(object):
             GPIO.output(DIR1, CCW)
             GPIO.output(DIR2, CW)
             self.dir = -1.0
-        self.more = 1
+        lock.acquire()
+        more.value = 1
+        lock.release()
+
         print(abs(STEPCOUNT))
 
         for x in range(abs(STEPCOUNT)):
-            if self.nbrStep < RAMP:      #Positive acceleration
+            if self.internal_step < RAMP:      #Positive acceleration
                    STARTDELAY +=1*tilt_ramp
                    delay = 1.0/STARTDELAY
 
-            if self.nbrStep > RAMP:      #Negative acceleration
+            if self.internal_step > RAMP:      #Negative acceleration
                     STARTDELAY -=1*tilt_ramp
                     delay = 1.0/STARTDELAY
 
@@ -139,11 +147,18 @@ class MOTOR(object):
             GPIO.output(STEP, GPIO.LOW)
             sleep(delay)
 
-            self.nbrStep+=1
+            self.internal_step += 1
+            lock.acquire()
+            nbrStep.value = self.internal_step
+            lock.release()
 
 
-        self.more = 0
+        #self.more = 0
         self.nbrStep = 0
+        lock.acquire()
+        more.value = 0
+        nbrStep.value = self.internal_step
+        lock.release()
 
         GPIO.output(SLEEP, 0)
         thread.exit()

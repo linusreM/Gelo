@@ -11,7 +11,7 @@ QR_size = 100.0
 
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 print('attempting connect\n')
-clientsocket.connect(('130.229.166.58', int(sys.argv[3])))
+clientsocket.connect(('130.229.175.7', int(sys.argv[3])))
 print('Connection open\n')
 #clientsocket.send('Connection open\n')
 time.sleep(1)
