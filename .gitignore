@@ -1,2 +1,6 @@
 .DS_Store
+camera/usbvideostream.pyc
+camera/pivideostream.pyc
+camera/videostream.pyc
+camera/marker.pyc
 

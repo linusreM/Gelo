@@ -1,4 +1,5 @@
 from videostream import VideoStream
+from marker import Marker
 import numpy as np
 import cv2
 import cv2.aruco as aruco
@@ -37,6 +38,8 @@ else:
 dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
 parameters = aruco.DetectorParameters_create()
 
+
+
 parameters.cornerRefinementMethod = 1
 parameters.cornerRefinementWinSize = 5
 parameters.cornerRefinementMaxIterations = 30 
@@ -52,36 +55,30 @@ while True:
 	corners, ids, rejected = aruco.detectMarkers(gray, dictionary, parameters = parameters)
 	rvecs, tvecs, obj = aruco.estimatePoseSingleMarkers(corners, 65.18, vs.mtx, vs.dist)
 
+	markers = []
+
 	try:
-		if (rvecs.size > 0):
+		for i in range(len(ids)):
+			marker = Marker(corners[i], ids[i], tvecs[i], rvecs[i])
+			markers.append(marker)
 
-			for marker in tvecs:
-				tvecs_x = marker[0,0]
-				tvecs_y = marker[0,1]
-				tvecs_z = marker[0,2]
 
-			for marker in rvecs:
-				#print marker
-				rvecs_x = marker[0,0]
-				rvecs_y = marker[0,1]
-				rvecs_z = marker[0,2]
-
+		for marker in markers:
 			msg = "{}#{}#{}#{}#{}#{}#{}#{}#{}$".format(
-				id, 
-				type, 
-				"data", 
-				tvecs_x, 
-				tvecs_y, 
-				tvecs_z, 
-				rvecs_x, 
-				rvecs_y, 
-				rvecs_z
-			) 
-			
+					id, 
+					type, 
+					marker.data, 
+					marker.tvecs_x, 
+					marker.tvecs_y, 
+					marker.tvecs_z, 
+					marker.rvecs_x, 
+					marker.rvecs_y, 
+					marker.rvecs_z
+			) 	
 			print msg
 			clientsocket.send(msg)
-
+		time.sleep(3.0)
 	except:
 		print "no code"
-	time.sleep(0.2)
+
 vs.stop()
