@@ -15,6 +15,16 @@ import time
 import errno
 from multiprocessing import Process, Value, Lock
 import random
+import fcntl
+import struct
+
+def get_ip_address(ifname):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return socket.inet_ntoa(fcntl.ioctl(
+        s.fileno(),
+        0x8915,  # SIOCGIFADDR
+        struct.pack('256s', ifname[:15])
+    )[20:24])
 
 def explore(tof_fwd, tof_left, tof_right, nbrtimes):
 
@@ -73,14 +83,18 @@ def bno_init():
 
     return bno
 
-def udp_init(CLIENT_IP, ID):
+def udp_init(CLIENT_IP, ID, MY_IP):
     clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    print("My IP:" + str(MY_IP))
+    time.sleep(1)
     if (int(sys.argv[1]) is not 0):
         print('attempting connect\n')
         clientsocket.connect((CLIENT_IP, int(sys.argv[1])))
         print('Connection open\n')
-        clientsocket.send(str(ID))
-        time.sleep(1)
+        hello_msg = (str(ID) + "#" + "HELLO!" + "#" + str(MY_IP) + "&")
+        clientsocket.send(hello_msg)
+	print(hello_msg)
+	time.sleep(1)
         print('Start sending data\n')
 
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #initialize UDP stream socket
@@ -108,8 +122,11 @@ def Main():
 
     m = MOTOR()
     t = TOF()
-    bno = bno_init()
-    clientsocket, serversocket = udp_init(CLIENT_IP, ID)
+    bno_status = raw_input("Do you want BNO on [1/0]? ")
+    if int(bno_status):   
+	 bno = bno_init()
+    MY_IP = get_ip_address('wlan0')
+    clientsocket, serversocket = udp_init(CLIENT_IP, ID, MY_IP)
 
     while(True):
 
@@ -174,8 +191,12 @@ def Main():
             tof_right = tof3.get_distance()
             tof_back = tof4.get_distance()
             tofVal = (str(tof_fwd) + "#" + str(tof_back) + "#" + str(tof_left) + "#" + str(tof_right))
-            heading, roll, pitch = bno.read_euler()
-            bnoVal = (str(heading) + "#" + str(roll) + "#" + str(pitch))
+            bnoVal = ""
+	    try:
+		heading, roll, pitch = bno.read_euler()
+            	bnoVal = (str(heading) + "#" + str(roll) + "#" + str(pitch))
+	    except:
+		print("no bno")
             msg=str(ID) + "#" + str(command) + "#" + str(more.value) + "#" + str(mmStep) + "#" +  str(tofVal) + "#" + str(bnoVal) + "$"
             if (int(sys.argv[1]) is not 0):
                 clientsocket.send(msg)
