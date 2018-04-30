@@ -39,7 +39,6 @@ dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
 parameters = aruco.DetectorParameters_create()
 
 
-
 parameters.cornerRefinementMethod = 1
 parameters.cornerRefinementWinSize = 5
 parameters.cornerRefinementMaxIterations = 30 
@@ -77,7 +76,9 @@ while True:
 			) 	
 			print msg
 			clientsocket.send(msg)
+
 		time.sleep(3.0)
+
 	except:
 		print "no code"
 
