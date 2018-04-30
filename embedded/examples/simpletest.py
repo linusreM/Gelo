@@ -31,7 +31,7 @@ from Adafruit_BNO055 import BNO055
 # Create and configure the BNO sensor connection.  Make sure only ONE of the
 # below 'bno = ...' lines is uncommented:
 # Raspberry Pi configuration with serial UART and RST connected to GPIO 18:
-bno = BNO055.BNO055(address=0x29)
+bno = BNO055.BNO055(serial_port='/dev/ttyUSB0')
 # BeagleBone Black configuration with default I2C connection (SCL=P9_19, SDA=P9_20),
 # and RST connected to pin P9_12:
 #bno = BNO055.BNO055(rst='P9_12')
@@ -89,4 +89,4 @@ while True:
     # in meters per second squared):
     #x,y,z = bno.read_gravity()
     # Sleep for a second until the next reading.
-    time.sleep(1)
+    #time.sleep(1)
