@@ -2,8 +2,8 @@ import numpy as np
 from time import sleep
 import RPi.GPIO as GPIO
 import thread
-from multiprocessing import Value
-
+from multiprocessing import Value, Process
+import sys
 
 M2 = 18
 M1 = 15
@@ -47,16 +47,20 @@ class MOTOR(object):
         self.stepspermm = 2048.0/(75.61*np.pi)
         self.more = 0
         self.stepperdegree = ((215.0*np.pi)/360)*(2048.0/(75.61*np.pi))
-        self.dir = 1
 
-    def motor_turn(self, rotation_degree, max_velocity, tilt_ramp=10.0):
-            #stepspermm = 2048.0/(75.61*np.pi)
-        #stepperdegree = ((215.0*np.pi)/360)*(2048.0/(75.61*np.pi))
+
+    def motor_turn(self, nbrStep, more, lock, dir, rotation_degree):
+        max_velocity=(1.0/1500.0)
+        tilt_ramp=10.0
         STEPCOUNTf = self.stepperdegree*float(rotation_degree)   # Steps per Revolution (360 / 7.5)
         STEPCOUNT = int(STEPCOUNTf) 	#Whole steps
-
         STARTDELAY =100 		#Denominator  of delay  fraction
-        self.nbrStep =0 			#How many steps has happened
+
+        lock.acquire()
+        nbrStep.value =0 			#How many steps has happened
+        self.internal_step = nbrStep.value
+        lock.release()
+
         RAMP = abs(STEPCOUNT)/2
         print(abs(STEPCOUNT))
 
@@ -64,22 +68,28 @@ class MOTOR(object):
         if (rotation_degree > 0):
             GPIO.output(DIR1, CW)
             GPIO.output(DIR2, CW)
-            self.dir = 1
+            lock.acquire()
+            dir.value = 1
+            lock.release()
 
         else:
-            GPIO.output(DIR1, CCW)
             GPIO.output(DIR2, CCW)
-            self.dir = -1
+            GPIO.output(DIR1, CCW)
+            lock.acquire()
+            dir.value = -1
+            lock.release()
 
 
-        self.more = 1
+        lock.acquire()
+        more.value = 1
+        lock.release()
 
         for x in range(abs(STEPCOUNT)):
-            if self.nbrStep < RAMP:	#Positive acceleration
+            if self.internal_step < RAMP:	#Positive acceleration
                STARTDELAY +=1*tilt_ramp
                delay = 1.0/STARTDELAY
 
-            if self.nbrStep > RAMP:	#Negative acceleration
+            if self.internal_step > RAMP:	#Negative acceleration
                 STARTDELAY -=1*tilt_ramp
                 delay = 1.0/STARTDELAY
 
@@ -91,44 +101,55 @@ class MOTOR(object):
             GPIO.output(STEP, GPIO.LOW)
             sleep(delay)
 
-            self.nbrStep+=1
+            self.internal_step += 1
+            lock.acquire()
+            nbrStep.value = self.internal_step
+            lock.release()
 
-        self.more = 0
-        self.nbrStep = 0
+
+        self.internal_step = 0
+        lock.acquire()
+        more.value = 0
+        nbrStep.value = self.internal_step
+        lock.release()
 
         GPIO.output(SLEEP, 0)
-        thread.exit()
+        return False
 
 
-    def motor_move(self, nbrStep, more, lock, movement_distance):
+    def motor_move(self, nbrStep, more, lock, dir, collision, movement_distance):
         max_velocity=(1.0/1500.0)
         tilt_ramp=10.0
         STEPCOUNTf = self.stepspermm*float(movement_distance)   # Steps per Revolution (360 / 7.5)
         STEPCOUNT = int(STEPCOUNTf)     #Whole steps
-
         STARTDELAY =100
+
         lock.acquire()                 #Denominator  of delay  fraction
         nbrStep.value = 0
         self.internal_step = nbrStep.value
-        lock.release()                      #How many steps has happened
+        lock.release()
+                           #How many steps has happened
         RAMP = abs(STEPCOUNT)/2
         print(abs(STEPCOUNT))
+
         GPIO.output(SLEEP, 1)
 
         if (movement_distance > 0):			#Go Forward if distance is positive
             GPIO.output(DIR1, CW)
             GPIO.output(DIR2, CCW)
-            self.dir = 1.0
+            lock.acquire()
+            dir.value = 1
+            lock.release()
 
         else:
             GPIO.output(DIR1, CCW)
             GPIO.output(DIR2, CW)
-            self.dir = -1.0
+            lock.acquire()
+            dir.value = -1
+            lock.release()
         lock.acquire()
         more.value = 1
         lock.release()
-
-        print(abs(STEPCOUNT))
 
         for x in range(abs(STEPCOUNT)):
             if self.internal_step < RAMP:      #Positive acceleration
@@ -151,14 +172,17 @@ class MOTOR(object):
             lock.acquire()
             nbrStep.value = self.internal_step
             lock.release()
+            if (collision.value == 1):
+                break
 
 
         #self.more = 0
-        self.nbrStep = 0
+        self.internal_step = 0
         lock.acquire()
         more.value = 0
         nbrStep.value = self.internal_step
+        collision.value = 0
         lock.release()
 
         GPIO.output(SLEEP, 0)
-        thread.exit()
+        return False

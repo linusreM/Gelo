@@ -14,15 +14,21 @@ from Adafruit_BNO055 import BNO055
 import time
 import errno
 from multiprocessing import Process, Value, Lock
+import random
 
 def explore(tof_fwd, tof_left, tof_right, nbrtimes):
 
-    if (tof_fwd>300 and tof_right > 200 and tof_left >200):
+    if (tof_fwd>300 and tof_right > 130 and tof_left >130):
         modulus = int(nbrtimes)%3
         print ("Modulus:" + str(modulus))
 
         if (modulus == 0):
-            return ("BOT1"+"#"+"MOVE"+"#"+"150"+"$")
+            if (tof_fwd > 700):
+                distance = 400
+            else:
+                distance = tof_fwd - 250
+
+            return ("BOT1"+"#"+"MOVE"+"#"+str(distance)+"$")
 
         elif (modulus == 1):
             return ("BOT1"+"#"+"TURN"+"#"+"90"+"$")
@@ -33,50 +39,77 @@ def explore(tof_fwd, tof_left, tof_right, nbrtimes):
         else:
             return ("error")
     elif (tof_left>tof_right):
-            return ("BOT1"+"#"+"TURN"+"#"+"-50"+"$")
+            rand = -50 + random.randint(-90,90)
+            return ("BOT1"+"#"+"TURN"+"#"+str(rand)+"$")
     else:
-            return ("BOT1"+"#"+"TURN"+"#"+"50"+"$")
+            rand = 50 + random.randint(-90,90)
+            return ("BOT1"+"#"+"TURN"+"#"+str(rand)+"$")
 
-def Main():
+def bno_init():
 
-    m = MOTOR()
-    t = TOF()
-    expCount = 0
-    command = ""
-    ID = "BOT1"
-    stopFlag = 1
-    nbrStep = Value('i', 0)
-    more = Value('i', 0)
-    lock = Lock()
+    bno = BNO055.BNO055(serial_port = '/dev/ttyUSB0')
 
+    if not bno.begin():
+        raise RuntimeError('Failed to initialize BNO055! Is the sensor connected?')
 
-    # Verbose debugging if arg -v
-    if len(sys.argv) == 2 and sys.argv[2].lower() == '-v':
-        logging.basicConfig(level=logging.DEBUG)
+    # Print system status and self test result.
+    status, self_test, error = bno.get_system_status()
+    print('System status: {0}'.format(status))
+    print('Self test result (0x0F is normal): 0x{0:02X}'.format(self_test))
+    # Print out an error if system status is in error mode.
+    if status == 0x01:
+        print('System error: {0}'.format(error))
+        print('See datasheet section 4.3.59 for the meaning.')
 
+    # Print BNO055 software revision and other diagnostic data.
+    sw, bl, accel, mag, gyro = bno.get_revision()
+    print('Software version:   {0}'.format(sw))
+    print('Bootloader version: {0}'.format(bl))
+    print('Accelerometer ID:   0x{0:02X}'.format(accel))
+    print('Magnetometer ID:    0x{0:02X}'.format(mag))
+    print('Gyroscope ID:       0x{0:02X}\n'.format(gyro))
 
-    #Init socket
+    print('Reading BNO055 data, press Ctrl-C to quit...')
 
+    return bno
+
+def udp_init(CLIENT_IP, ID):
+    clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     if (int(sys.argv[1]) is not 0):
-        clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        #clientsocket.bind(('130.229.189.118', int(sys.argv[1])))
         print('attempting connect\n')
-        clientsocket.connect(('localhost', int(sys.argv[1])))
+        clientsocket.connect((CLIENT_IP, int(sys.argv[1])))
         print('Connection open\n')
-        clientsocket.send('Connection open\n')
+        clientsocket.send(str(ID))
         time.sleep(1)
         print('Start sending data\n')
-        clientsocket.send('Start sending position update\n')
-        ID = "BOT1"
-        packetno = 0
-
-         #bind socket to port 3344
-        #serversocket.listen(5) # become a server socket, maximum 5 connections
-
-        print('Reading sensor data, press Ctrl-C to quit...')
 
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #initialize UDP stream socket
     serversocket.bind(('0.0.0.0', 8080))
+
+    return clientsocket, serversocket
+
+def Main():
+
+    if len(sys.argv) == 2 and sys.argv[2].lower() == '-v':
+     logging.basicConfig(level=logging.DEBUG)
+
+    expCount                = 0
+    command                 = ""
+    instring                = ""
+    ID                      = "BOT1"
+    stopFlag                = 1
+    collision_error         = 0
+    nbrStep                 = Value('i', 0)
+    more                    = Value('i', 0)
+    dir                     = Value('i', 1)
+    collision               = Value('i', 0)
+    lock                    = Lock()
+    CLIENT_IP               = '130.229.153.60'
+
+    m = MOTOR()
+    t = TOF()
+    bno = bno_init()
+    clientsocket, serversocket = udp_init(CLIENT_IP, ID)
 
     while(True):
 
@@ -96,6 +129,8 @@ def Main():
 
                 if len(buf) > 0:
                     ID, command, value = buf.split('$')[0].split('#')
+                    print(buf)
+                    # ID, command, value = buf.split('$')[0].split('#')
 
                     if (command == "EXPLORE"):
                         expCount = value
@@ -106,19 +141,21 @@ def Main():
                     print 'No connection'
                     time.sleep(0.1)
 
+
+
         if (expCount > 0):
             expString= explore(tof1.get_distance(),tof2.get_distance(),tof3.get_distance(), expCount)
             ID, command, value = expString.split('$')[0].split('#')
             expCount -= 1
 
         if (command == "MOVE"):
-            motor_process = Process(target= m.motor_move, args = (nbrStep, more, lock, float(value)))
+            motor_process = Process(target= m.motor_move, args = (nbrStep, more, lock, dir, collision, float(value)))
             motor_process.start()
             time.sleep(0.1)
 
         elif (command == "TURN"):
-            rotate_thread = threading.Thread(target=m.motor_turn, args = (float(value), 1.0/900.0))
-            rotate_thread.start()
+            rotate_process = Process(target=m.motor_turn, args = (nbrStep, more, lock, dir, float(value)))
+            rotate_process.start()
             time.sleep(0.1)
 
         else:
@@ -127,23 +164,53 @@ def Main():
         while(more.value == 1 or stopFlag == 0):
             stopFlag = 0
             if (command == "MOVE"):
-                mmStep = m.dir*nbrStep.value/m.stepspermm
+                mmStep = dir.value*nbrStep.value/m.stepspermm
 
             else:
-                mmStep = m.dir*nbrStep.value/m.stepperdegree
+                mmStep = dir.value*nbrStep.value/m.stepperdegree
 
-            tofVal = (str(tof1.get_distance()) + "#" + str(tof4.get_distance()) + "#" + str(tof2.get_distance()) + "#" + str(tof3.get_distance()) + "#")
-            time.sleep(0.1)
-            msg=str(ID) + "#" + str(command) + "#" + str(more.value) + "#" + str(mmStep) + "#" +  str(tofVal) + "$"
-
+            tof_fwd = tof1.get_distance()
+            tof_left = tof2.get_distance()
+            tof_right = tof3.get_distance()
+            tof_back = tof4.get_distance()
+            tofVal = (str(tof_fwd) + "#" + str(tof_back) + "#" + str(tof_left) + "#" + str(tof_right))
+            heading, roll, pitch = bno.read_euler()
+            bnoVal = (str(heading) + "#" + str(roll) + "#" + str(pitch))
+            msg=str(ID) + "#" + str(command) + "#" + str(more.value) + "#" + str(mmStep) + "#" +  str(tofVal) + "#" + str(bnoVal) + "$"
             if (int(sys.argv[1]) is not 0):
                 clientsocket.send(msg)
 
             print(msg)
-        if (more.value == 0):
-            stopFlag = 1
+
+            if(collision_error == 1):
+                collision_error = 0
+                msg=str(ID) + "#" + "ERROR" + "#" + "FRONT_COLLISION"+ "$"
+                if (int(sys.argv[1]) is not 0):
+                    clientsocket.send(msg)
+                print(msg)
+
+            if (tof_fwd < 200 and dir.value == 1 and more.value == 1):
+                print("CRASH IN" + str(tof_fwd) + "mm!!!")
+                collision.value = 1
+                lock.acquire()
+                more.value = 0
+                lock.release()
+                collision_error = 1
+
+            if (more.value == 0 and collision_error == 0):
+                stopFlag = 1
+
 
         command = ""
+
+        try:
+            motor_process.is_alive()
+            print ("Motor process still alive")
+            motor_process.terminate()
+            motor_process.join()
+        except:
+            print("Motor process not alive")
+
 
 
 if __name__ == '__main__':

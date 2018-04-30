@@ -10,7 +10,7 @@ import socket
 
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 print('attempting connect\n')
-clientsocket.connect(('localhost', int(sys.argv[3])))
+clientsocket.connect(('130.229.137.36', int(sys.argv[3])))
 
 print('Connection open\n')
 #clientsocket.send('Connection open\n')
@@ -41,13 +41,14 @@ parameters = aruco.DetectorParameters_create()
 
 parameters.cornerRefinementMethod = 1
 parameters.cornerRefinementWinSize = 5
-parameters.cornerRefinementMaxIterations = 30 
+parameters.cornerRefinementMaxIterations = 30
 parameters.cornerRefinementMinAccuracy = 0.0001
 
 vs = VideoStream(isPiCamera = isPiCamera, resolution = resolution).start()
 time.sleep(2.0)
 
 while True:
+<<<<<<< HEAD
 	img = vs.readUndistorted()
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #EVENTUELLT
 

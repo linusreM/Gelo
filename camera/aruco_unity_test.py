@@ -45,44 +45,43 @@ parameters.cornerRefinementMinAccuracy = 0.0001
 vs = VideoStream(isPiCamera = isPiCamera, resolution = resolution).start()
 time.sleep(2.0)
 
+while True:
+	img = vs.readUndistorted()
+	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #EVENTUELLT
 
-img = vs.readUndistorted()
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #EVENTUELLT
+	corners, ids, rejected = aruco.detectMarkers(gray, dictionary, parameters = parameters)
+	rvecs, tvecs, obj = aruco.estimatePoseSingleMarkers(corners, 65.18, vs.mtx, vs.dist)
 
-corners, ids, rejected = aruco.detectMarkers(gray, dictionary, parameters = parameters)
-rvecs, tvecs, obj = aruco.estimatePoseSingleMarkers(corners, 65.18, vs.mtx, vs.dist)
+	try:
+		if (rvecs.size > 0):
 
-try:
-	if (rvecs.size > 0):
+			for marker in tvecs:
+				tvecs_x = marker[0,0]
+				tvecs_y = marker[0,1]
+				tvecs_z = marker[0,2]
 
-		for marker in tvecs:
-			tvecs_x = marker[0,0]
-			tvecs_y = marker[0,1]
-			tvecs_z = marker[0,2]
+			for marker in rvecs:
+				#print marker
+				rvecs_x = marker[0,0]
+				rvecs_y = marker[0,1]
+				rvecs_z = marker[0,2]
 
-		for marker in rvecs:
-			#print marker
-			rvecs_x = marker[0,0]
-			rvecs_y = marker[0,1]
-			rvecs_z = marker[0,2]
+			msg = "{}#{}#{}#{}#{}#{}#{}#{}#{}$".format(
+				id, 
+				type, 
+				"data", 
+				tvecs_x, 
+				tvecs_y, 
+				tvecs_z, 
+				rvecs_x, 
+				rvecs_y, 
+				rvecs_z
+			) 
+			
+			print msg
+			clientsocket.send(msg)
 
-		msg = "{}#{}#{}#{}#{}#{}#{}#{}#{}$".format(
-			id, 
-			type, 
-			"data", 
-			tvecs_x, 
-			tvecs_y, 
-			tvecs_z, 
-			rvecs_x, 
-			rvecs_y, 
-			rvecs_z
-		) 
-		
-		print msg
-		clientsocket.send(msg)
-
-except:
-	print "no code"
-
-
+	except:
+		print "no code"
+	time.sleep(0.2)
 vs.stop()
