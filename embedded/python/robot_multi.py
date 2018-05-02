@@ -91,7 +91,7 @@ def udp_init(CLIENT_IP, ID, MY_IP):
         print('attempting connect\n')
         clientsocket.connect((CLIENT_IP, int(sys.argv[1])))
         print('Connection open\n')
-        hello_msg = (str(ID) + "#" + "HELLO!" + "#" + str(MY_IP) + "&")
+        hello_msg = (str(ID) + "#" + "HELLO!" + "#" + str(MY_IP) + "$")
         clientsocket.send(hello_msg)
 	print(hello_msg)
 	time.sleep(1)
@@ -118,7 +118,7 @@ def Main():
     dir                     = Value('i', 1)
     collision               = Value('i', 0)
     lock                    = Lock()
-    CLIENT_IP               = '130.229.153.60'
+    CLIENT_IP               = '130.229.151.126'
 
     m = MOTOR()
     t = TOF()
