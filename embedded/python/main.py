@@ -97,7 +97,7 @@ def udp_init(CLIENT_IP, ID, MY_IP):
         print('Connected to ' + str(CLIENT_IP) + ":" + str(sys.argv[1]))
         hello_msg = (str(ID) + "#" + "HELLO!" + "#" + str(MY_IP) + "$")
         clientsocket.send(hello_msg)
-	print(hello_msg)
+        print(hello_msg)
         print('Start sending data\n')
 
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #initialize UDP stream socket
@@ -110,6 +110,8 @@ def Main():
     if len(sys.argv) == 2 and sys.argv[2].lower() == '-v':
      logging.basicConfig(level=logging.DEBUG)
 
+    #Initialize all variables and shared memory
+
     expCount                = 0
     command                 = ""
     instring                = ""
@@ -121,34 +123,36 @@ def Main():
     dir                     = Value('i', 1)
     collision               = Value('i', 0)
     lock                    = Lock()
-    CLIENT_IP               = '130.229.151.126'
+    CLIENT_IP               = '130.229.170.204'
 
-    m = MOTOR()
-    t = TOF()
-    vs = VideoStream(isPiCamera = True, resolution = (640,480), framerate = 5)
-    time.sleep(2.0)
-    md = MarkerDetector(id = "BOT1")
-    bno_status = raw_input("Do you want BNO on [1/0]? ")
-    if int(bno_status):   
-	 bno = bno_init()
-    MY_IP = get_ip_address('wlan0')
+    #Initialize object
+
+    m                       = MOTOR()
+    t                       = TOF()
+    vs                      = VideoStream(isPiCamera = True, resolution = (640,480), framerate = 90)
+    md                      = MarkerDetector(id = ID)
+    MY_IP                   = get_ip_address('wlan0')
     clientsocket, serversocket = udp_init(CLIENT_IP, ID, MY_IP)
-    
+    bno_status              = raw_input("Do you want BNO on [1/0]? ")
+    if int(bno_status):
+        bno                 = bno_init()
 
-    time1 = time.clock()
+   
+   
+    vs.startCamera()
     img = vs.readUndistortedStill()
-
     md.detectMarkers(img, vs.stream.mtx, vs.stream.dist)
-    time2 = time.clock()
-    print(time2-time1)
 
     for message in md.messages:
         print message
-        clientsocket.send(message)   
+        clientsocket.send(message)
+
+    vs.stop()
 
 
     while(True):
 
+        #If motor is not running or in explore state, start listening to socket
         if (nbrStep.value == 0 and expCount == 0):
             command = ""
 
@@ -158,27 +162,27 @@ def Main():
             except socket.error, e:
                 err = e.args[0]
                 if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
-                    print "n"
+                    #print "n"
                     time.sleep(0.1)
 
             else:
-
+                #If there is an incoming message, split instructionset by $
+                #Then split individual messages at #
                 if len(buf) > 0:
                     ID, command, value = buf.split('$')[0].split('#')
                     print(buf)
-                    # ID, command, value = buf.split('$')[0].split('#')
-
+                    #Enter explore state?
                     if (command == "EXPLORE"):
                         expCount = value
                         expCount = int(expCount)
                         print("expCount:" + str(expCount))
 
                 else:
-                    print 'No connection'
+                    #print 'No connection'
                     time.sleep(0.1)
 
 
-
+        #Check if explore state is active, and if so carry out next instruction
         if (expCount > 0):
             expString= explore(tof1.get_distance(),tof2.get_distance(),tof3.get_distance(), expCount)
             ID, command, value = expString.split('$')[0].split('#')
@@ -194,9 +198,10 @@ def Main():
             rotate_process.start()
             time.sleep(0.1)
 
-        else:
-            print("No valid command")
+        #else:
+            #print("No valid command")
 
+        #Only send data to Unity while motors are running + one last time when moreFlag is 0
         while(more.value == 1 or stopFlag == 0):
             stopFlag = 0
             if (command == "MOVE"):
@@ -211,11 +216,12 @@ def Main():
             tof_back = tof4.get_distance()
             tofVal = (str(tof_fwd) + "#" + str(tof_back) + "#" + str(tof_left) + "#" + str(tof_right))
             bnoVal = ""
-	    try:
-		heading, roll, pitch = bno.read_euler()
-            	bnoVal = (str(heading) + "#" + str(roll) + "#" + str(pitch))
-	    except:
-		print("no bno")
+            try:
+                heading, roll, pitch = bno.read_euler()
+                bnoVal = (str(heading) + "#" + str(roll) + "#" + str(pitch))
+            except:
+                print("no bno")
+
             msg=str(ID) + "#" + str(command) + "#" + str(more.value) + "#" + str(mmStep) + "#" +  str(tofVal) + "#" + str(bnoVal) + "$"
             if (int(sys.argv[1]) is not 0):
                 clientsocket.send(msg)
@@ -239,13 +245,20 @@ def Main():
 
             if (more.value == 0 and collision_error == 0):
                 stopFlag = 1
+                vs.startCamera()
+                img = vs.readUndistortedStill()
+                md.detectMarkers(img, vs.stream.mtx, vs.stream.dist)
 
-
-        command = ""
+                for message in md.messages:
+                    print message
+                    clientsocket.send(message)
+                vs.stop()
+  
+    	command = ""
 
         try:
             motor_process.is_alive()
-            print ("Motor process still alive")
+            #print ("Motor process still alive")
             motor_process.terminate()
             motor_process.join()
         except:
