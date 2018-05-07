@@ -2,7 +2,8 @@
 import logging
 import sys
 sys.path.insert(0, '/home/pi/Gelo/camera')
-#import camera_calibration
+from videostream import VideoStream
+from marker import *
 import time
 import socket
 import VL53L0X
@@ -12,6 +13,7 @@ import threading
 from mStepper_class import *
 from tof_class import *
 import numpy as np
+import cv2
 from Adafruit_BNO055 import BNO055
 import time
 import errno
@@ -92,11 +94,10 @@ def udp_init(CLIENT_IP, ID, MY_IP):
     if (int(sys.argv[1]) is not 0):
         print('attempting connect\n')
         clientsocket.connect((CLIENT_IP, int(sys.argv[1])))
-        print('Connection open\n')
+        print('Connected to ' + str(CLIENT_IP) + ":" + str(sys.argv[1]))
         hello_msg = (str(ID) + "#" + "HELLO!" + "#" + str(MY_IP) + "$")
         clientsocket.send(hello_msg)
 	print(hello_msg)
-	time.sleep(1)
         print('Start sending data\n')
 
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #initialize UDP stream socket
@@ -124,11 +125,27 @@ def Main():
 
     m = MOTOR()
     t = TOF()
+    vs = VideoStream(isPiCamera = True, resolution = (640,480), framerate = 5)
+    time.sleep(2.0)
+    md = MarkerDetector(id = "BOT1")
     bno_status = raw_input("Do you want BNO on [1/0]? ")
     if int(bno_status):   
 	 bno = bno_init()
     MY_IP = get_ip_address('wlan0')
     clientsocket, serversocket = udp_init(CLIENT_IP, ID, MY_IP)
+    
+
+    time1 = time.clock()
+    img = vs.readUndistortedStill()
+
+    md.detectMarkers(img, vs.stream.mtx, vs.stream.dist)
+    time2 = time.clock()
+    print(time2-time1)
+
+    for message in md.messages:
+        print message
+        clientsocket.send(message)   
+
 
     while(True):
 

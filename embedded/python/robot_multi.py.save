@@ -2,7 +2,7 @@
 import logging
 import sys
 sys.path.insert(0, '/home/pi/Gelo/camera')
-#import camera_calibration
+import camera_calibration
 import time
 import socket
 import VL53L0X
@@ -122,12 +122,14 @@ def Main():
     lock                    = Lock()
     CLIENT_IP               = '130.229.151.126'
 
-    m = MOTOR()
-    t = TOF()
-    bno_status = raw_input("Do you want BNO on [1/0]? ")
-    if int(bno_status):   
-	 bno = bno_init()
-    MY_IP = get_ip_address('wlan0')
+    m		            = MOTOR()
+    t 			    = TOF()
+    bno_status 		    = raw_input("Do you want BNO on [1/0]? ")
+ 
+   if int(bno_status):   
+	 bno 		    = bno_init()
+ 
+    MY_IP	 	    = get_ip_address('wlan0')
     clientsocket, serversocket = udp_init(CLIENT_IP, ID, MY_IP)
 
     while(True):
