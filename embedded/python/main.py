@@ -105,6 +105,21 @@ def udp_init(CLIENT_IP, ID, MY_IP):
 
     return clientsocket, serversocket
 
+def check_rotation_error(command, expected_value, obj, more_flag):
+    error_flag = 0
+    if command == "MOVE":
+        heading_cmp, roll_cmp, pitch_cmp = obj.read_euler()
+        if heading_cmp > 180.0:
+            heading_cmp = heading_cmp - 360.0
+        delta = heading_cmp - expected_value
+        print("Delta = " + str(delta))
+        if abs(delta)>5.0:
+            print("ROTATION ERROR")
+            error_flag = 1
+
+    return error_flag
+
+
 def Main():
 
     if len(sys.argv) == 2 and sys.argv[2].lower() == '-v':
@@ -118,12 +133,14 @@ def Main():
     ID                      = "BOT1"
     stopFlag                = 1
     collision_error         = 0
+    start_flag              = 1
+    gyro_error              = 0
     nbrStep                 = Value('i', 0)
     more                    = Value('i', 0)
     dir                     = Value('i', 1)
     collision               = Value('i', 0)
     lock                    = Lock()
-    CLIENT_IP               = '130.229.170.204'
+    CLIENT_IP               = '130.229.129.243'
 
     #Initialize object
 
@@ -137,15 +154,16 @@ def Main():
     if int(bno_status):
         bno                 = bno_init()
 
-   
-   
+
+
     vs.startCamera()
     img = vs.readUndistortedStill()
     md.detectMarkers(img, vs.stream.mtx, vs.stream.dist)
 
     for message in md.messages:
         print message
-        clientsocket.send(message)
+        if (int(sys.argv[1]) is not 0):
+            clientsocket.send(message)
 
     vs.stop()
 
@@ -189,6 +207,11 @@ def Main():
             expCount -= 1
 
         if (command == "MOVE"):
+            #heading_ref, x, y = bno.read_euler()
+            #print("Heading_REF:" + str(heading_ref))
+            #time.sleep(2)
+            #if heading_ref > 180.0:
+            #    heading_ref = heading_ref - 360.0
             motor_process = Process(target= m.motor_move, args = (nbrStep, more, lock, dir, collision, float(value)))
             motor_process.start()
             time.sleep(0.1)
@@ -235,6 +258,14 @@ def Main():
                     clientsocket.send(msg)
                 print(msg)
 
+            #if(gyro_error == 1):
+            #    gyro_error = 0
+            #    msg=str(ID) + "#" + "ERROR" + "#" + "GYRO_OFFSET"+ "$"
+            #    if (int(sys.argv[1]) is not 0):
+            #        clientsocket.send(msg)
+            #    print(msg)
+
+
             if (tof_fwd < 200 and dir.value == 1 and more.value == 1):
                 print("CRASH IN" + str(tof_fwd) + "mm!!!")
                 collision.value = 1
@@ -242,6 +273,8 @@ def Main():
                 more.value = 0
                 lock.release()
                 collision_error = 1
+
+            #gyro_error = check_rotation_error(command, heading_ref, bno, more.value)
 
             if (more.value == 0 and collision_error == 0):
                 stopFlag = 1
@@ -251,10 +284,11 @@ def Main():
 
                 for message in md.messages:
                     print message
-                    clientsocket.send(message)
+                    if (int(sys.argv[1]) is not 0):
+                        clientsocket.send(message)
                 vs.stop()
-  
-    	command = ""
+
+        command = ""
 
         try:
             motor_process.is_alive()
