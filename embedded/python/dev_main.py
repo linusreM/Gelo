@@ -131,30 +131,36 @@ def Main():
     command                 = ""
     instring                = ""
     ID                      = "BOT1"
+    seq_num                 = 0
     stopFlag                = 1
     collision_error         = 0
     start_flag              = 1
     gyro_error              = 0
+    ack_timeout             = 1000*(10^(-3))
+    ack_flag                = 0
     nbrStep                 = Value('i', 0)
     more                    = Value('i', 0)
     dir                     = Value('i', 1)
     collision               = Value('i', 0)
     lock                    = Lock()
-    CLIENT_IP               = '130.229.166.216'
+    CLIENT_IP               = '130.229.129.243'
 
-    #Initialize object
+    #Initialize objects
 
     m                       = MOTOR()
     t                       = TOF()
     vs                      = VideoStream(isPiCamera = True, resolution = (640,480), framerate = 90)
     md                      = MarkerDetector(id = ID)
-    MY_IP                   = get_ip_address('wlan0')
-    clientsocket, serversocket = udp_init(CLIENT_IP, ID, MY_IP)
     bno_status              = raw_input("Do you want BNO on [1/0]? ")
     if int(bno_status):
         bno                 = bno_init()
 
+    #Initialize socket
 
+    MY_IP                   = get_ip_address('wlan0')
+    clientsocket, serversocket = udp_init(CLIENT_IP, ID, MY_IP)
+
+    #Look for aruco code
 
     vs.startCamera()
     img = vs.readUndistortedStill()
@@ -243,20 +249,53 @@ def Main():
                 heading, roll, pitch = bno.read_euler()
                 bnoVal = (str(heading) + "#" + str(roll) + "#" + str(pitch))
             except:
-                #print("no bno")
-		pass
-            msg=str(ID) + "#" + str(command) + "#" + str(more.value) + "#" + str(mmStep) + "#" +  str(tofVal) + "#" + str(bnoVal) + "$"
-            if (int(sys.argv[1]) is not 0):
-                clientsocket.send(msg)
+                print("no bno")
 
-            print(msg)
 
-            if(collision_error == 1):
-                collision_error = 0
-                msg=str(ID) + "#" + "ERROR" + "#" + "FRONT_COLLISION"+ "$"
+                msg=str(seq_num) + "#" + str(command) + "#" + str(more.value) + "#" + str(mmStep) + "#" +  str(tofVal) + "#" + str(bnoVal) + "$"
                 if (int(sys.argv[1]) is not 0):
                     clientsocket.send(msg)
                 print(msg)
+
+
+                while(ack_flag == 0 and more.value == 0):
+                    #print("Entering ACK state...")
+                    t_end = time.time() + 1
+                    print("timer:" + str(t_end))
+                    while time.time() < t_end:
+
+                        #print("Entering ACK timeout loop...")
+                        try:
+                            buf = serversocket.recv(1024, 0X40)
+
+                        except socket.error, e:
+                            err = e.args[0]
+
+                                #print "n"
+
+                        #print("Socket buffer:" + str(buf))
+                        if len(buf) > 0:
+                            #ID = buf.split('$')
+                            #print("Buffer after split:" + str(ID))
+                            if (buf=="ACK"):
+                                print("ACK recieved!")
+                                ack_flag = 1
+                                break
+                    if (int(sys.argv[1]) is not 0 and ack_flag is not 1):
+                        print("ACK not recieved, sending again...")
+                        print(msg)
+                        clientsocket.send(msg)
+                ack_flag = 0
+
+
+
+
+            if(collision_error == 1):
+                collision_error = 0
+                # msg=str(seq_num) + "#" + "ERROR" + "#" + "FRONT_COLLISION"+ "$"
+                # if (int(sys.argv[1]) is not 0):
+                #     clientsocket.send(msg)
+                # print(msg)
 
             #if(gyro_error == 1):
             #    gyro_error = 0
@@ -266,21 +305,24 @@ def Main():
             #    print(msg)
 
 
-         #   if (tof_fwd < 200 and dir.value == 1 and more.value == 1):
-          #      print("CRASH IN" + str(tof_fwd) + "mm!!!")
-          #      collision.value = 1
-          #      lock.acquire()
-          #      more.value = 0
-          #      lock.release()
-          #      collision_error = 1
+            if (tof_fwd < 200 and dir.value == 1 and more.value == 1 and command == "MOVE"):
+                print("CRASH IN" + str(tof_fwd) + "mm!!!")
+                collision.value = 1
+                lock.acquire()
+                more.value = 0
+                lock.release()
+                collision_error = 1
 
             #gyro_error = check_rotation_error(command, heading_ref, bno, more.value)
 
             if (more.value == 0 and collision_error == 0):
                 stopFlag = 1
+                seq_num = seq_num + 1
                 vs.startCamera()
                 img = vs.readUndistortedStill()
                 md.detectMarkers(img, vs.stream.mtx, vs.stream.dist)
+
+
 
                 for message in md.messages:
                     print message
@@ -296,8 +338,9 @@ def Main():
             motor_process.terminate()
             motor_process.join()
         except:
+            pass
             #print("Motor process not alive")
-	    pass
+
 
 
 if __name__ == '__main__':

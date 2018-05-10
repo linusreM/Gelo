@@ -140,7 +140,7 @@ def Main():
     dir                     = Value('i', 1)
     collision               = Value('i', 0)
     lock                    = Lock()
-    CLIENT_IP               = '130.229.166.216'
+    CLIENT_IP               = '130.229.186.43'
 
     #Initialize object
 
@@ -207,11 +207,11 @@ def Main():
             expCount -= 1
 
         if (command == "MOVE"):
-            #heading_ref, x, y = bno.read_euler()
-            #print("Heading_REF:" + str(heading_ref))
-            #time.sleep(2)
-            #if heading_ref > 180.0:
-            #    heading_ref = heading_ref - 360.0
+            heading_ref, x, y = bno.read_euler()
+            print("Heading_REF:" + str(heading_ref))
+            time.sleep(2)
+            if heading_ref > 180.0:
+                heading_ref = heading_ref - 360.0
             motor_process = Process(target= m.motor_move, args = (nbrStep, more, lock, dir, collision, float(value)))
             motor_process.start()
             time.sleep(0.1)
@@ -243,8 +243,8 @@ def Main():
                 heading, roll, pitch = bno.read_euler()
                 bnoVal = (str(heading) + "#" + str(roll) + "#" + str(pitch))
             except:
-                #print("no bno")
-		pass
+                print("no bno")
+
             msg=str(ID) + "#" + str(command) + "#" + str(more.value) + "#" + str(mmStep) + "#" +  str(tofVal) + "#" + str(bnoVal) + "$"
             if (int(sys.argv[1]) is not 0):
                 clientsocket.send(msg)
@@ -258,23 +258,24 @@ def Main():
                     clientsocket.send(msg)
                 print(msg)
 
-            #if(gyro_error == 1):
-            #    gyro_error = 0
-            #    msg=str(ID) + "#" + "ERROR" + "#" + "GYRO_OFFSET"+ "$"
-            #    if (int(sys.argv[1]) is not 0):
-            #        clientsocket.send(msg)
-            #    print(msg)
+            if(gyro_error == 1):
+                gyro_error = 0
+                msg=str(ID) + "#" + "ERROR" + "#" + "GYRO_OFFSET"+ "$"
+                if (int(sys.argv[1]) is not 0):
+                    clientsocket.send(msg)
+                print(msg)
 
 
-         #   if (tof_fwd < 200 and dir.value == 1 and more.value == 1):
-          #      print("CRASH IN" + str(tof_fwd) + "mm!!!")
-          #      collision.value = 1
-          #      lock.acquire()
-          #      more.value = 0
-          #      lock.release()
-          #      collision_error = 1
+            if (tof_fwd < 200 and dir.value == 1 and more.value == 1):
+                print("CRASH IN" + str(tof_fwd) + "mm!!!")
+                collision.value = 1
+                lock.acquire()
+                more.value = 0
+                lock.release()
+                collision_error = 1
 
-            #gyro_error = check_rotation_error(command, heading_ref, bno, more.value)
+	    if (collision.value is not 1):
+            	collision.value = check_rotation_error(command, heading_ref, bno, more.value)
 
             if (more.value == 0 and collision_error == 0):
                 stopFlag = 1
@@ -296,8 +297,8 @@ def Main():
             motor_process.terminate()
             motor_process.join()
         except:
-            #print("Motor process not alive")
-	    pass
+            print("Motor process not alive")
+
 
 
 if __name__ == '__main__':

@@ -10,6 +10,9 @@ class VideoStream:
 			from usbvideostream import usbVideoStream
 
 			self.stream = usbVideoStream(src, resolution = resolution)
+	
+	def startCamera(self):
+		self.stream.startCamera()
 
 
 	def start(self):
@@ -20,6 +23,10 @@ class VideoStream:
 
 	def read(self):
 		return self.stream.read()
+
+
+	def readUndistortedStill(self):
+		return self.stream.readUndistortedStill()
 
 	def stop(self):
 		self.stream.stop()
