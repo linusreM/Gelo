@@ -143,7 +143,7 @@ def Main():
     dir                     = Value('i', 1)
     collision               = Value('i', 0)
     lock                    = Lock()
-    CLIENT_IP               = '130.229.129.243'
+    CLIENT_IP               = '130.229.159.163'
 
     #Initialize objects
 

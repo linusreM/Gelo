@@ -32,11 +32,11 @@ class PiVideoStream:
 
 
 	def startCamera(self):
-		start = time.clock()
+		#start = time.clock()
 		self.camera = PiCamera(resolution = self.resolution, framerate = self.framerate)
-		start = how_long(start,'init')
+		#start = how_long(start,'init')
 		self.rawCapture = PiRGBArray(self.camera, size = self.resolution)
-		start = how_long(start,'raw')
+		#start = how_long(start,'raw')
 
 	def start(self):
 		Thread(target=self.update, args=()).start()
@@ -60,14 +60,14 @@ class PiVideoStream:
 
 
 	def readUndistortedStill(self):
-		start = time.clock()
+		#start = time.clock()
 		self.camera.capture(self.rawCapture, format="bgr")
 		img = self.rawCapture.array
-		start = how_long(start, 'capture')
+		#start = how_long(start, 'capture')
 		h, w = img.shape[:2]
 		map1, map2 = cv2.fisheye.initUndistortRectifyMap(self.mtx, self.dist, np.eye(3), self.mtx, self.camera.resolution, cv2.CV_16SC2)
 		undistorted_img = cv2.remap(img, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-		start = how_long(start, 'undistortion')
+		#start = how_long(start, 'undistortion')
 		return undistorted_img
 		
 
