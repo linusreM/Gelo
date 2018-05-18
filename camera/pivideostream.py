@@ -18,11 +18,11 @@ class PiVideoStream:
 		self.frame = None
 		self.stopped = False
 		
-
+############
 		#self.camera = PiCamera(resolution = resolution, framerate = framerate)
 		#self.rawCapture = PiRGBArray(self.camera, size = resolution)
-#		self.stream = self.camera.capture_continuous(self.rawCapture, format="bgr", use_video_port=True)
-
+		#self.stream = self.camera.capture_continuous(self.rawCapture, format="bgr", use_video_port=True)
+#############
 		with np.load('/home/pi/Gelo/camera/picamera'+ str(resolution[0]) + '_intrinsics.npz') as X:
 			self.mtx, self.dist, self.rvecs, self.tvecs = [X[i] for i in ('mtx','dist','rvecs','tvecs')]
 	
